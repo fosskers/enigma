@@ -1,6 +1,7 @@
 module Enigma
   ( -- * Encryption
-    crypt
+    Key(..)
+  , crypt
     -- * State Monad
   , runState, execState, evalState
   ) where
@@ -27,18 +28,21 @@ For now, assume we're handling `Word64` in all cases.
 
 -}
 
--- | Encrypt/decrypt a data block. The returned `State` is the last gear used.
+-- | A secret key.
+newtype Key = Key { _key :: Word64 }
+
+-- | Encrypt/decrypt a data block. The `State` value is the last gear used.
 --
--- > evalState (crypt (evalState (crypt v) k) k) == v
-crypt :: Word64 -> State Word64 Word64
+-- > evalState (crypt (evalState (crypt v) k)) k == v
+crypt :: Word64 -> State Key Word64
 crypt v = foldl' xor v . realign <$> gears
 
 -- | The gear states necessary to encrypt all 64 bits of the input data.
-gears :: State Word64 [Word64]
+gears :: State Key [Word64]
 gears = do
-  g <- get
+  g <- _key <$> get
   let gs = take 64 [g+1, g+2 ..]
-  put $ last gs
+  put . Key $ last gs
   pure gs
 
 -- | Realign the gears bit-by-bit to allow for efficient XOR usage later.
