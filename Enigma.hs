@@ -1,5 +1,11 @@
-module Enigma where
+module Enigma
+  ( -- * Encryption
+    crypt
+    -- * State Monad
+  , runState, execState, evalState
+  ) where
 
+import Control.Monad.Trans.State
 import Data.Bits
 import Data.Foldable (foldl')
 import Data.List
@@ -21,13 +27,19 @@ For now, assume we're handling `Word64` in all cases.
 
 -}
 
--- | Encrypt/decrypt a data block and advance the gear.
-crypt :: Word64 -> Word64 -> Word64
-crypt k v = foldl' xor v . realign $ gears k
+-- | Encrypt/decrypt a data block. The returned `State` is the last gear used.
+--
+-- > evalState (crypt (evalState (crypt v) k) k) == v
+crypt :: Word64 -> State Word64 Word64
+crypt v = foldl' xor v . realign <$> gears
 
 -- | The gear states necessary to encrypt all 64 bits of the input data.
-gears :: Word64 -> [Word64]
-gears g = take 64 [g, g+1 ..]
+gears :: State Word64 [Word64]
+gears = do
+  g <- get
+  let gs = take 64 [g+1, g+2 ..]
+  put $ last gs
+  pure gs
 
 -- | Realign the gears bit-by-bit to allow for efficient XOR usage later.
 --
