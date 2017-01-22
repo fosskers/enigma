@@ -1,8 +1,47 @@
+-- |
+-- Module    : Enigma
+-- Copyright : (c) Colin Woodbury, 2017
+-- License   : BSD3
+-- Maintainer: Colin Woodbury <colingw@gmail.com>
+--
+-- This library provides a symmetric key encryption algorithm inspired by
+-- the famous /Enigma Machine/ used by Nazi Germany in World War 2.
+--
+-- The original machine had two main hardware deficiencies that allowed
+-- the Allies to eventually crack it:
+--
+-- 1. To keep the machine small, it only had 3 (or 4, depending on the model)
+-- mechanical /Rotors/ which each mapped an input value to some output. Wired
+-- together, these Rotors would map input letters pressed on a keyboard to
+-- output letters. With each input the Rotors would advance, changing the
+-- mapping. However, with so few Rotors, the amount of obfuscation steps that
+-- it could perform were limited.
+--
+-- 2. To address the above problem, the designers of the Enigma decided to
+-- have the output of the last Rotor feed back into itself, winding its way
+-- back through the machine. This artificially extends the Rotor count, but
+-- also proved to be the critical flaw.
+--
+-- More detailed explanations of the original machine can be easily found on
+-- the internet.
+--
+-- This library takes the following approach:
+--
+-- 1. It works on bits, not characters.
+-- 2. The 26-letter Rotors are reduced to 2 possible bit transformations, "id" and "flip".
+-- 3. We represent a single rotor as a single bit. 0 is "id", 1 is "flip".
+-- 4. The entire machine (group of rotors) is represented by a series of bits.
+-- 5. Like the original Enigma, our secret key is the initial state of the rotors,
+--    which is just a series of bits. It can thus be arbitrarily long to offer
+--    many many obfuscation steps.
+-- 6. Like the original Enigma, the ciphering algorithm both encrypts and decrypts.
+-- 7. The ciphering algorithm doesn't feed back into itself.
+
 module Enigma
-  ( -- * Encryption
+  ( -- * Encryption / Decryption
     Key(..)
-  , crypt
-    -- * State Monad
+  , cipher
+    -- * Re-exports
   , runState, execState, evalState
   ) where
 
@@ -14,40 +53,31 @@ import Data.Word
 
 ---
 
-{-
-
-(0) ID GEAR
-1 -> 1
-0 -> 0
-
-(1) FLIP GEAR
-1 -> 0
-0 -> 1
-
-For now, assume we're handling `Word64` in all cases.
-
--}
-
--- | A secret key.
+-- | A secret key. Represents the state of all the Rotors.
 newtype Key = Key { _key :: Word64 }
 
--- | Encrypt/decrypt a data block. The `State` value is the last gear used.
+-- | Encrypt/decrypt a data block. The `State` value is the last rotorset used.
 --
--- > evalState (crypt (evalState (crypt v) k)) k == v
-crypt :: Word64 -> State Key Word64
-crypt v = foldl' xor v . realign <$> gears
+-- > evalState (cipher (evalState (cipher v) k)) k == v
+--
+-- Encrypt a list:
+--
+-- > > evalState (mapM cipher [1,2,3]) $ Key 1
+-- > [6513794518609451620,7321263536672712088,11932949555100099993]
+cipher :: Word64 -> State Key Word64
+cipher v = foldl' xor v . realign <$> rotors
 
--- | The gear states necessary to encrypt all 64 bits of the input data.
-gears :: State Key [Word64]
-gears = do
+-- | The rotor states necessary to encrypt all 64 bits of the input data.
+rotors :: State Key [Word64]
+rotors = do
   g <- _key <$> get
   let gs = take 64 [g+1, g+2 ..]
   put . Key $ last gs
   pure gs
 
--- | Realign the gears bit-by-bit to allow for efficient XOR usage later.
+-- | Realign the rotors bit-by-bit to allow for efficient XOR usage later.
 --
--- Example. The three columnar gearsets:
+-- Example. The three columnar rotorsets:
 --
 -- @
 -- [ 0 ] [ 0 ] [ 0 ]
