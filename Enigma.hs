@@ -54,16 +54,39 @@ import Data.Word
 ---
 
 -- | A secret key. Represents the state of all the Rotors.
-newtype Key = Key { _key :: Word64 }
+newtype Key = Key { _key :: Word64 } deriving (Show)
 
 -- | Encrypt/decrypt a data block. The `State` value is the last rotorset used.
 --
--- > evalState (cipher (evalState (cipher v) k)) k == v
+-- > λ evalState (cipher (evalState (cipher v) k)) k == v
+-- > True
 --
--- Encrypt a list:
+-- ==== __Examples__
 --
--- > > evalState (mapM cipher [1,2,3]) $ Key 1
+-- Encrypt a `Word64`:
+--
+-- > λ evalState (cipher 1) $ Key 1
+-- > 6513794518609451620
+--
+-- Decrypt a `Word64`:
+--
+-- > λ evalState (cipher 6513794518609451620) $ Key 1
+-- > 1
+--
+-- Chain encryptions, carrying over the rotor state between operations:
+--
+-- > λ evalState ((,) <$> cipher 1 <*> cipher 2) $ Key 1
+-- > (6513794518609451620,7321263536672712088)
+--
+-- Encrypt a `Foldable`:
+--
+-- > λ evalState (mapM cipher [1,2,3]) $ Key 1
 -- > [6513794518609451620,7321263536672712088,11932949555100099993]
+--
+-- Encrypt a message:
+--
+-- > λ evalState (mapM (cipher . fromIntegral . ord) "Hint") $ Key 1
+-- > [6513794518609451565,7321263536672712179,11932949555100100084,6513794518609451537]
 cipher :: Word64 -> State Key Word64
 cipher v = foldl' xor v . realign <$> rotors
 
