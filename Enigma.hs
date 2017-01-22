@@ -80,12 +80,12 @@ newtype Key = Key { _key :: Word64 } deriving (Show)
 --
 -- Encrypt a `Foldable`:
 --
--- > λ evalState (mapM cipher [1,2,3]) $ Key 1
+-- > λ evalState (traverse cipher [1,2,3]) $ Key 1
 -- > [6513794518609451620,7321263536672712088,11932949555100099993]
 --
 -- Encrypt a message:
 --
--- > λ evalState (mapM (cipher . fromIntegral . ord) "Hint") $ Key 1
+-- > λ evalState (traverse (cipher . fromIntegral . ord) "Hint") $ Key 1
 -- > [6513794518609451565,7321263536672712179,11932949555100100084,6513794518609451537]
 cipher :: Word64 -> State Key Word64
 cipher v = foldl' xor v . realign <$> rotors
