@@ -45,11 +45,10 @@ module Enigma
   , runState, execState, evalState
   ) where
 
-import Control.Monad.Trans.State
-import Data.Bits
-import Data.Foldable (foldl')
-import Data.List
-import Data.Word
+import           Control.Monad.Trans.State
+import           Data.Bits
+import qualified Data.Vector.Unboxed as U
+import           Data.Word
 
 ---
 
@@ -88,42 +87,17 @@ newtype Key = Key { _key :: Word64 } deriving (Show)
 -- > λ evalState (traverse (cipher . fromIntegral . ord) "Hint") $ Key 1
 -- > [6513794518609451565,7321263536672712179,11932949555100100084,6513794518609451537]
 cipher :: Word64 -> State Key Word64
-cipher v = foldl' xor v . realign <$> rotors
+cipher v = xor v . b2w . U.map (odd . popCount) <$> rotors
 
 -- | The rotor states necessary to encrypt all 64 bits of the input data.
-rotors :: State Key [Word64]
+rotors :: State Key (U.Vector Word64)
 rotors = do
   g <- _key <$> get
-  let gs = take 64 [g+1, g+2 ..]
-  put . Key $ last gs
+  let gs = U.enumFromN (g+1) 64
+  put . Key $ U.last gs
   pure gs
 
--- | Realign the rotors bit-by-bit to allow for efficient XOR usage later.
---
--- Example. The three columnar rotorsets:
---
--- @
--- [ 0 ] [ 0 ] [ 0 ]
--- [ 1 ] [ 0 ] [ 0 ]
--- [ 0 ] [ 1 ] [ 0 ]
--- @
---
--- are regrouped into rows:
---
--- @
--- [ 0 0 0 ]
--- [ 1 0 0 ]
--- [ 0 1 0 ]
--- @
-realign :: [Word64] -> [Word64]
-realign = map i2b . transpose . map b2i
-
--- | Unfold a `Word64` into its constituent bits.
-b2i :: Word64 -> [Bool]
-b2i g = map (testBit g) [0 .. 63]
-
--- | Collapse a group of bits into a `Word64`.
-i2b :: [Bool] -> Word64
-i2b = foldl' f zeroBits . zip [0..]
+b2w :: U.Vector Bool -> Word64
+b2w = U.foldl' f zeroBits . U.zip (U.enumFromN 0 64)
   where f acc (n, True) = setBit acc n
         f acc _ = acc
