@@ -34,8 +34,9 @@
 -- 5. Like the original Enigma, our secret key is the initial state of the rotors,
 --    which is just a series of bits. It can thus be arbitrarily long to offer
 --    many many obfuscation steps.
--- 6. Like the original Enigma, the ciphering algorithm both encrypts and decrypts.
--- 7. The ciphering algorithm doesn't feed back into itself.
+-- 6. Like the original Enigma, each input (bit) is encrypted with a different key (rotor set).
+-- 7. Like the original Enigma, the ciphering algorithm both encrypts and decrypts.
+-- 8. The ciphering algorithm doesn't feed back into itself.
 
 module Enigma
   ( -- * Encryption / Decryption
@@ -53,7 +54,7 @@ import           Data.Word
 ---
 
 -- | A secret key. Represents the state of all the Rotors.
-newtype Key = Key { _key :: Word64 } deriving (Show)
+newtype Key = Key { _key :: Word64 } deriving (Eq, Show)
 
 -- | Encrypt/decrypt a data block. The `State` value is the last rotorset used.
 --
@@ -92,11 +93,12 @@ cipher v = xor v . b2w . U.map (odd . popCount) <$> rotors
 -- | The rotor states necessary to encrypt all 64 bits of the input data.
 rotors :: State Key (U.Vector Word64)
 rotors = do
-  g <- _key <$> get
-  let gs = U.enumFromN (g+1) 64
-  put . Key $ U.last gs
-  pure gs
+  r <- _key <$> get
+  let rs = U.enumFromN (r+1) 64
+  put . Key $ U.last rs
+  pure rs
 
+-- | Pack a list of "bits" back into a `Word64`.
 b2w :: U.Vector Bool -> Word64
 b2w = U.foldl' f zeroBits . U.zip (U.enumFromN 0 64)
   where f acc (n, True) = setBit acc n
