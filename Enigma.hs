@@ -88,7 +88,11 @@ newtype Key = Key { _key :: Word64 } deriving (Eq, Show)
 -- > λ evalState (traverse (cipher . fromIntegral . ord) "Hint") $ Key 1
 -- > [6513794518609451565,7321263536672712179,11932949555100100084,6513794518609451537]
 cipher :: Word64 -> State Key Word64
-cipher v = xor v . b2w . U.map (odd . popCount) <$> rotors
+cipher v = xor v <$> flatten
+
+-- | A string of 64 keys, flattened into a single `Word64` for an easy `xor`.
+flatten :: State Key Word64
+flatten = b2w . U.map (odd . popCount) <$> rotors
 
 -- | The rotor states necessary to encrypt all 64 bits of the input data.
 rotors :: State Key (U.Vector Word64)
