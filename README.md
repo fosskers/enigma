@@ -3,6 +3,10 @@ Enigma
 
 [![Build Status](https://travis-ci.org/fosskers/enigma.svg?branch=master)](https://travis-ci.org/fosskers/enigma)
 
+**Note:** This algorithm [has been
+shown](https://www.reddit.com/r/crypto/comments/5tudkl/a_modernized_enigma_algorithm/)
+to be utter garbage as-is, please do not use it for anything.
+
 This library provides a symmetric key encryption algorithm inspired by the
 famous [*Enigma Machine*](https://en.wikipedia.org/wiki/Enigma_machine) used
 by Nazi Germany in World War 2. The original machine had two main hardware
@@ -35,8 +39,6 @@ This library takes the following approach:
 6. Like the original Enigma, each input (bit) is encrypted with a different key (rotor set).
 7. Like the original Enigma, the ciphering algorithm both encrypts and decrypts.
 8. The ciphering algorithm doesn't feed back into itself.
-
-**Note:** This algorithm is brand new, so its level of security is unclear.
 
 Examples
 --------
